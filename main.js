@@ -76,7 +76,7 @@ function bidItems() {
                 'UPDATE items SET ? WHERE ?',
                 [
                   {
-                    current_bid: parseInt(answer.bidAmount)
+                    current_bid: bidNumber
                   },
                   {
                     item_name: answer.bidChoice
