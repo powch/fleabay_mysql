@@ -41,13 +41,13 @@ function bidItems() {
     if (err) console.log(err);
     let itemArr = [];
     res.forEach(key => {
-      itemArr.push(
-        {
-            name: `${key.item_name} - $${key.current_bid ? key.current_bid : key.starting_bid}`,
-            value: key.item_name,
-            short: key.item_name
-        }
-      );
+      itemArr.push({
+        name: `${key.item_name} - $${
+          key.current_bid ? key.current_bid : key.starting_bid
+        }`,
+        value: key.item_name,
+        short: key.item_name
+      });
     });
     inquirer
       .prompt([
@@ -131,62 +131,4 @@ function auctionItems() {
         }
       );
     });
-}
-
-function addSong() {
-  console.log('adding new song...');
-  let query = connection.query(
-    'INSERT INTO songs SET ?',
-    {
-      title: 'marigold',
-      artist: 'periphery',
-      genre: 'progmetal'
-    },
-    function(err, res) {
-      console.log(`${res.affectedRows} added.`);
-    }
-  );
-  console.log(query);
-  updateSong();
-}
-
-function updateSong() {
-  console.log('Updating song.');
-  let query = connection.query(
-    'UPDATE songs SET ? WHERE ?',
-    [
-      {
-        title: 'Widowmaker'
-      },
-      {
-        artist: 'TBDM'
-      }
-    ],
-    function(err, res) {
-      console.log(`${res.affectedRows} updated.`);
-    }
-  );
-  deleteSong();
-}
-
-function deleteSong() {
-  console.log('Deleting song.');
-  let query = connection.query(
-    'DELETE FROM songs WHERE ?',
-    {
-      artist: 'clap cotton'
-    },
-    function(err, res) {
-      console.log(`${res.affectedRows} deleted.`);
-    }
-  );
-  console.log(query);
-}
-
-function readSongs() {
-  console.log('Reading songs.');
-  let query = connection.query('SELECT * FROM songs', function(err, res) {
-    console.log(res);
-  });
-  console.log(query);
 }
