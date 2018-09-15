@@ -2,137 +2,191 @@ const mysql = require('mysql');
 const inquirer = require('inquirer');
 
 const connection = mysql.createConnection({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'root',
-    database: 'fleabay_db'
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
+  password: 'root',
+  database: 'fleabay_db'
 });
 
-connection.connect((err) => {
-    if (err) console.log(err);
+connection.connect(err => {
+  if (err) console.log(err);
 
-    console.log(`Connected as id ${connection.threadId}`);
+  console.log(`Connected as id ${connection.threadId}`);
 
-    bidApp();
-    
+  bidApp();
 });
 
 function bidApp() {
-    inquirer.prompt(
-        {
-            message: 'What would you like to do?',
-            type: 'list',
-            choices: [
-                'Create Auction',
-                'Bid',
-                'Quit'
-            ],
-            name: 'mainMenu'
-        }
-    ).then((answer) => {
-        if (answer.mainMenu === 'Bid') {
-            bidItems();
-        } else if (answer.mainMenu === 'Quit') {
-            return connection.end();
-        }
+  inquirer
+    .prompt({
+      message: 'What would you like to do?',
+      type: 'list',
+      choices: ['Create Auction', 'Bid', 'Quit'],
+      name: 'mainMenu'
+    })
+    .then(answer => {
+      if (answer.mainMenu === 'Create Auction') {
+        auctionItems();
+      } else if (answer.mainMenu === 'Bid') {
+        bidItems();
+      } else if (answer.mainMenu === 'Quit') {
+        return connection.end();
+      }
     });
 }
 
 function bidItems() {
-    connection.query('SELECT * FROM items', (err, res) => {
-        if (err) console.log(err);
-        let itemArr = [];
-        res.forEach((key) => {
-            itemArr.push(key.item_name);
-        });
-        inquirer.prompt([
-            {
-                message: 'What would you like to bid on?',
-                type: 'list',
-                choices: itemArr,
-                name: 'bidMenu'
-            },
-            {
-                message: 'How much would you like to bid?',
-                name: 'bidAmount'
-            }
-        ]).then((answer) => {
-            connection.query(
+  connection.query('SELECT * FROM items', (err, res) => {
+    if (err) console.log(err);
+    let itemArr = [];
+    res.forEach(key => {
+      itemArr.push(
+        {
+            name: `${key.item_name} - $${key.current_bid ? key.current_bid : key.starting_bid}`,
+            value: key.item_name,
+            short: key.item_name
+        }
+      );
+    });
+    inquirer
+      .prompt([
+        {
+          message: 'What would you like to bid on?',
+          type: 'rawlist',
+          choices: itemArr,
+          name: 'bidChoice'
+        },
+        {
+          message: 'How much would you like to bid?',
+          name: 'bidAmount'
+        }
+      ])
+      .then(answer => {
+        console.log(answer.bidChoice);
+        connection.query(
+          'SELECT starting_bid, current_bid FROM items WHERE ?',
+          {
+            item_name: answer.bidChoice
+          },
+          (err, res) => {
+            const starting_bid = res[0].starting_bid;
+            const current_bid = res[0].current_bid;
+            const bidNumber = parseInt(answer.bidAmount);
+
+            if (starting_bid < bidNumber && current_bid < bidNumber) {
+              connection.query(
                 'UPDATE items SET ? WHERE ?',
                 [
-                    {
-                        current_bid: answer.bidAmount
-                    },
-                    {
-                        item_name: answer.bidMenu
-                    }
+                  {
+                    current_bid: parseInt(answer.bidAmount)
+                  },
+                  {
+                    item_name: answer.bidChoice
+                  }
                 ],
-                function(err, res) {
-                    if (err) console.log(err);
+                (err, res) => {
+                  if (err) console.log(err);
+                  console.log(
+                    `Bid accepted. Current highest bid is ${answer.bidAmount}`
+                  );
+                  bidApp();
                 }
-            );
-                bidApp();
-        });
+              );
+            } else {
+              console.log('Your bid is too low! Try again!');
+              bidItems();
+            }
+          }
+        );
+      });
+  });
+}
+
+function auctionItems() {
+  inquirer
+    .prompt([
+      {
+        name: 'itemName',
+        message: 'What do you want to sell?'
+      },
+      {
+        name: 'itemPrice',
+        message: 'What is the starting price?'
+      }
+    ])
+    .then(answer => {
+      connection.query(
+        'INSERT INTO items SET ?',
+        {
+          item_name: answer.itemName,
+          starting_bid: parseInt(answer.itemPrice),
+          current_bid: 0
+        },
+        (err, res) => {
+          if (err) console.log(err);
+
+          console.log('Item added.');
+          bidApp();
+        }
+      );
     });
 }
 
 function addSong() {
-    console.log('adding new song...');
-    let query = connection.query(
-        'INSERT INTO songs SET ?',
-        {
-            title: 'marigold',
-            artist: 'periphery',
-            genre: 'progmetal'
-        },
-        function (err, res) {
-            console.log(`${res.affectedRows} added.`);
-        }
-    );
-    console.log(query);
-    updateSong();
+  console.log('adding new song...');
+  let query = connection.query(
+    'INSERT INTO songs SET ?',
+    {
+      title: 'marigold',
+      artist: 'periphery',
+      genre: 'progmetal'
+    },
+    function(err, res) {
+      console.log(`${res.affectedRows} added.`);
+    }
+  );
+  console.log(query);
+  updateSong();
 }
 
 function updateSong() {
-    console.log('Updating song.');
-    let query = connection.query(
-        'UPDATE songs SET ? WHERE ?',
-        [
-            {
-                title: 'Widowmaker'
-            },
-            {
-                artist: 'TBDM'
-            }
-        ],
-        function (err, res) {
-            console.log(`${res.affectedRows} updated.`);
-        }
-    );
-    deleteSong();
+  console.log('Updating song.');
+  let query = connection.query(
+    'UPDATE songs SET ? WHERE ?',
+    [
+      {
+        title: 'Widowmaker'
+      },
+      {
+        artist: 'TBDM'
+      }
+    ],
+    function(err, res) {
+      console.log(`${res.affectedRows} updated.`);
+    }
+  );
+  deleteSong();
 }
 
 function deleteSong() {
-    console.log('Deleting song.');
-    let query = connection.query(
-        'DELETE FROM songs WHERE ?',
-        {
-            artist: 'clap cotton'
-        },
-        function (err, res) {
-            console.log(`${res.affectedRows} deleted.`);
-        }
-    );
-    console.log(query);
+  console.log('Deleting song.');
+  let query = connection.query(
+    'DELETE FROM songs WHERE ?',
+    {
+      artist: 'clap cotton'
+    },
+    function(err, res) {
+      console.log(`${res.affectedRows} deleted.`);
+    }
+  );
+  console.log(query);
 }
 
 function readSongs() {
-    console.log('Reading songs.');
-    let query = connection.query(
-        'SELECT * FROM songs', function (err, res) {
-            console.log(res);
-        }
-    );
-    console.log(query);
+  console.log('Reading songs.');
+  let query = connection.query('SELECT * FROM songs', function(err, res) {
+    console.log(res);
+  });
+  console.log(query);
 }
